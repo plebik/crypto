@@ -1,6 +1,7 @@
 import yfinance as yf
 from stats import *
 
+# Choosing a bitcoin ticker
 btc = yf.Ticker('BTC-USD')
 df = btc.history(period="max")[['Close', 'Volume']]
 info = descriptive_statistics(df)
