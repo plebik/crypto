@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import Dense, LSTM
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 import matplotlib.pyplot as plt
 
 btc = yf.Ticker('BTC-USD')
@@ -37,16 +37,19 @@ for i in range(period, len(test_data)):
 
 X_train, y_train, X_test = np.array(X_train), np.array(y_train), np.array(X_test)
 
-ec = EarlyStopping
+
+
 # Building a model
 model = Sequential()
 model.add(LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
 model.add(LSTM(50, return_sequences=False))
 model.add(Dense(25))
 model.add(Dense(1))
-
 model.compile(optimizer='adam', loss='mse')
-model.fit(X_train, y_train, epochs=1, validation_data=(X_test, y_test))
+
+es = EarlyStopping(monitor='val_loss', patience=30)
+mc = ModelCheckpoint('best_model', monitor='val_loss', save_best_only=True)
+model.fit(X_train, y_train, epochs=100, validation_data=(X_test, y_test), callbacks=[es, mc])
 
 predictions = model.predict(X_test)
 predictions = scaler.inverse_transform(predictions)

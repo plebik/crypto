@@ -1,5 +1,6 @@
 import yfinance as yf
 from stats import *
+import matplotlib.pyplot as plt
 
 btc = yf.Ticker('BTC-USD')
 df = btc.history(period="max")[['Close', 'Volume']]
@@ -12,5 +13,8 @@ df['relative'] = growth(df['Close'], type='relative')
 df['log'] = growth(df['Close'], type='log')
 
 growth_plot(df, btc.ticker)
+decomposition_plot(df['Close'])
+fft_plot(*fft())
+
 if __name__ == '__main__':
     pass
