@@ -3,7 +3,9 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 from statsmodels.tsa.seasonal import seasonal_decompose
-from scipy import fftpack
+from statsmodels.tsa.stattools import adfuller, kpss
+import warnings
+warnings.filterwarnings("ignore")
 
 
 def harmonic_mean(series):
@@ -107,32 +109,28 @@ def decomposition_plot(series):
     plt.savefig('Decomposition.png', dpi=300)
 
 
-def fft(f=10, fs=100):
-    t = np.arange(0, 1, 1 / fs)
-
-    # Sine function
-    y = np.sin(2 * np.pi * f * t)
-
-    # Perform Fourier transform
-    y_fft = fftpack.fft(y)
-
-    # Plot data
-    n = np.size(t)
-    fr = fs / 2 * np.linspace(0, 1, round(n / 2))
-    y_m = 2 / n * abs(y_fft[0:np.size(fr)])
-
-    return t, y, fr, y_m
+def test_adf(series, maxlag=None, regression='c', autolag='AIC'):
+    test, p_value, lags, nobs, critical_values, icbest = adfuller(x=series, maxlag=maxlag, regression=regression,
+                                                                  autolag=autolag)
+    print(
+        f"AUGMENTED DICKEY-FULLER TEST\nTest's statistics: {round(test, 4)}\n"
+        f"MacKinnon's approximate p-value: {round(p_value, 4)}\n"
+        f"Number of lags used: {lags}\nObservations used: {nobs}\n"
+        f"Critical Values:\n1%: {round(critical_values['1%'], 4)}\n"
+        f"5%: {round(critical_values['5%'], 4)}\n10%: {round(critical_values['10%'], 4)}\n"
+        f"Maximized information criterion: {round(icbest, 4)}\n")
 
 
-def fft_plot(t, y, fr, y_m):
-    fig, ax = plt.subplots(1, 2, figsize=(15, 5), dpi=300)
-    ax[0].plot(t, y)
-    ax[0].set_title('Time Series')
-    ax[0].set_xlabel('Time [s]')
-    ax[0].set_ylabel('Signal Amplitude')
-    ax[1].stem(fr, y_m)
-    ax[1].set_title('FFT')
-    ax[1].set_xlabel('Freq [Hz]')
-    ax[1].set_ylabel('Frequency Domain (Spectrum) Magnitude')
+def test_kpps(series, regression='c', nlags='auto'):
+    test, p_value, lags, crit = kpss(x=series, nlags=nlags, regression=regression)
 
-    plt.savefig('FFT.png', dpi=300)
+    print(
+        f"KPPS TEST\nTest's statistics: {round(test, 4)}\n"
+        f"p-value: {round(p_value, 4)}\n"
+        f"Truncation lag: {lags}\n"
+        f"Critical Values:\n10%: {round(crit['10%'], 4)}\n"
+        f"5%: {round(crit['5%'], 4)}\n"
+        f"2.5%: {round(crit['2.5%'], 4)}\n"
+        f"1%: {round(crit['1%'], 4)}\n")
+
+

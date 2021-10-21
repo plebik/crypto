@@ -49,7 +49,7 @@ model.compile(optimizer='adam', loss='mse')
 
 es = EarlyStopping(monitor='val_loss', patience=30)
 mc = ModelCheckpoint('best_model', monitor='val_loss', save_best_only=True)
-model.fit(X_train, y_train, epochs=100, validation_data=(X_test, y_test), callbacks=[es, mc])
+history = model.fit(X_train, y_train, epochs=100, validation_data=(X_test, y_test), callbacks=[es, mc])
 
 predictions = model.predict(X_test)
 predictions = scaler.inverse_transform(predictions)
