@@ -37,8 +37,6 @@ for i in range(period, len(test_data)):
 
 X_train, y_train, X_test = np.array(X_train), np.array(y_train), np.array(X_test)
 
-
-
 # Building a model
 model = Sequential()
 model.add(LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
@@ -57,7 +55,7 @@ predictions = scaler.inverse_transform(predictions)
 train = df['Close'][:training_data_len]
 test = df['Close'][training_data_len:]
 
-plt.style.use('fivethirtyeight')
+plt.style.use('ggplot')
 
 plt.figure(figsize=(10, 8))
 plt.title(btc.ticker)
