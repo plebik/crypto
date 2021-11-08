@@ -115,9 +115,9 @@ def test_adf(series):
            f"10%: {round(crit['10%'], 4)}\n"
 
     if p_value > 0.05 and all(i < test for i in list(crit.values())):
-        text += "\nNo reason to reject the null hypothesis. So, the time series is in fact non-stationary"
+        text += "\nNo reason to reject the null hypothesis. So, the time series is in fact non-stationary\n"
     else:
-        text += "\nWe can reject the null hypothesis and take that the series is stationary"
+        text += "\nWe can reject the null hypothesis and take that the series is stationary\n"
     print(text)
 
 
@@ -132,11 +132,11 @@ def test_kpps(series):
            f"2.5%: {round(crit['2.5%'], 4)}\n" \
            f"1%: {round(crit['1%'], 4)}\n"
 
-    if p_value > 0.05 and all(i < test for i in list(crit.values())):
+    if all(i < test for i in list(crit.values())):
         text += "\nThere is evidence for rejecting the null hypothesis in favor of the alternative." \
-                "Hence, the series is non-stationary"
+                "Hence, the series is non-stationary\n"
     else:
-        text += "\nNo evidence to reject null hypothesis. Hence, the series is stationary"
+        text += "\nNo evidence to reject null hypothesis. Hence, the series is stationary\n"
     print(text)
 
 
@@ -149,4 +149,4 @@ def day_analysis(series):
         tmp_dict[days[n]] = series.values[n::7]
 
     frame = pd.DataFrame.from_dict(tmp_dict, orient='index').transpose()
-    print(frame)
+    frame = frame[['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']]
