@@ -5,15 +5,9 @@ import matplotlib.pyplot as plt
 from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.stattools import adfuller, kpss
 import warnings
+from statistics import geometric_mean, harmonic_mean
+
 warnings.filterwarnings("ignore")
-
-
-def harmonic_mean(series):
-    output = np.zeros(series.shape[1])
-    for i in series:
-        output[0] += pow(i[0], -1)
-        output[1] += pow(i[1], -1)
-    return len(series) / output
 
 
 def chronological(series, t=None):
@@ -31,14 +25,15 @@ def descriptive_statistics(series):
     info.loc['min'] = series.min().to_numpy()
     info.loc['max'] = series.max().to_numpy()
     info.loc['mean'] = series.mean().to_numpy()
-    info.loc['harmonic'] = harmonic_mean(series.to_numpy())
+    info.loc['harmonic'] = [harmonic_mean(series[x]) for x in series.columns]
     info.loc['chronological'] = chronological(series.to_numpy())
     info.loc['median'] = series.median().to_numpy()
     info.loc['range'] = info.loc['max'] - info.loc['min']
     info.loc['std'] = series.std().to_numpy()
     info.loc['var_coef'] = info.loc['std'] / info.loc['mean']
-    info.loc['asymmetry'] = 3 * (info.loc['mean'] - info.loc['median']) / info.loc['std']
+    info.loc['asymmetry'] = series.skew().to_numpy()
     info.loc['kurtosis'] = series.kurt().to_numpy()
+    info.loc['G'] = [geometric_mean(series[x]) - 1 for x in series.columns]
     return info.round(2)
 
 
@@ -55,7 +50,7 @@ def dist_plot(series):
     axs[1, 0].plot(series['Close'])
     axs[1, 1].plot(series['Volume'])
     plt.tight_layout()
-    plt.savefig('Distribution.png', dpi=300)
+    plt.savefig('Distribution.svg', format='svg')
 
 
 def growth_plot(series, ticker=''):
@@ -69,7 +64,7 @@ def growth_plot(series, ticker=''):
     axs[2].set_title('Logarithmic RoR')
 
     plt.tight_layout()
-    plt.savefig('Rates of Return.png', dpi=300)
+    plt.savefig('Rates of Return.svg', format='svg')
 
 
 def growth(array, tau=1, type='absolute'):
@@ -106,31 +101,40 @@ def decomposition_plot(series):
     axs[1, 1].set_title('Residual')
 
     plt.tight_layout()
-    plt.savefig('Decomposition.png', dpi=300)
+    plt.savefig('Decomposition.svg', format='svg')
 
 
-def test_adf(series, maxlag=None, regression='c', autolag='AIC'):
-    test, p_value, lags, nobs, critical_values, icbest = adfuller(x=series, maxlag=maxlag, regression=regression,
-                                                                  autolag=autolag)
-    print(
-        f"AUGMENTED DICKEY-FULLER TEST\nTest's statistics: {round(test, 4)}\n"
-        f"MacKinnon's approximate p-value: {round(p_value, 4)}\n"
-        f"Number of lags used: {lags}\nObservations used: {nobs}\n"
-        f"Critical Values:\n1%: {round(critical_values['1%'], 4)}\n"
-        f"5%: {round(critical_values['5%'], 4)}\n10%: {round(critical_values['10%'], 4)}\n"
-        f"Maximized information criterion: {round(icbest, 4)}\n")
+def test_adf(series):
+    test, p_value, _, _, crit, _ = adfuller(series)
+    text = f"AUGMENTED DICKEY-FULLER TEST\n" \
+           f"Test's statistics: {round(test, 4)}\n" \
+           f"p-value: {round(p_value, 4)}\n" \
+           f"Critical Values:\n" \
+           f"1%: {round(crit['1%'], 4)}\n" \
+           f"5%: {round(crit['5%'], 4)}\n" \
+           f"10%: {round(crit['10%'], 4)}\n"
+
+    if p_value > 0.05 and all(i < test for i in list(crit.values())):
+        text += "\nNo reason to reject the null hypothesis. So, the time series is in fact non-stationary"
+    else:
+        text += "\nWe can reject the null hypothesis and take that the series is stationary"
+    print(text)
 
 
-def test_kpps(series, regression='c', nlags='auto'):
-    test, p_value, lags, crit = kpss(x=series, nlags=nlags, regression=regression)
+def test_kpps(series):
+    test, p_value, _, crit = kpss(series)
 
-    print(
-        f"KPPS TEST\nTest's statistics: {round(test, 4)}\n"
-        f"p-value: {round(p_value, 4)}\n"
-        f"Truncation lag: {lags}\n"
-        f"Critical Values:\n10%: {round(crit['10%'], 4)}\n"
-        f"5%: {round(crit['5%'], 4)}\n"
-        f"2.5%: {round(crit['2.5%'], 4)}\n"
-        f"1%: {round(crit['1%'], 4)}\n")
+    text = f"KPPS TEST\nTest's statistics: {round(test, 4)}\n" \
+           f"p-value: {round(p_value, 4)}\n" \
+           f"Critical Values:\n" \
+           f"10%: {round(crit['10%'], 4)}\n" \
+           f"5%: {round(crit['5%'], 4)}\n" \
+           f"2.5%: {round(crit['2.5%'], 4)}\n" \
+           f"1%: {round(crit['1%'], 4)}\n"
 
-
+    if p_value > 0.05 and all(i < test for i in list(crit.values())):
+        text += "\nThere is evidence for rejecting the null hypothesis in favor of the alternative." \
+                "Hence, the series is non-stationary"
+    else:
+        text += "\nNo evidence to reject null hypothesis. Hence, the series is stationary"
+    print(text)
