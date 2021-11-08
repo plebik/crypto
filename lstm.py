@@ -5,7 +5,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import yfinance as yf
 import numpy as np
 from stats import growth
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import Dense, LSTM, BatchNormalization
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 import matplotlib.pyplot as plt
@@ -53,8 +53,10 @@ es = EarlyStopping(monitor='val_loss', patience=50)
 mc = ModelCheckpoint('LSTM.h5', monitor='val_loss', save_best_only=True)
 history = model.fit(X_train, y_train, epochs=100, validation_data=(X_test, y_test), callbacks=[es, mc])
 
-train = model.predict(X_train)
-test = model.predict(X_test)
+loaded_model = load_model('LSTM.h5')
+
+train = loaded_model.predict(X_train)
+test = loaded_model.predict(X_test)
 
 plt.style.use('ggplot')
 

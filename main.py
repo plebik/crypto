@@ -15,9 +15,10 @@ df['log'] = growth(df['Close'], type='log')
 growth_plot(df, btc.ticker)
 decomposition_plot(df['Close'])
 plot_acf(df['Close'])
-plt.savefig('Autocorrelatiion.svg', format='svg', dpi=300)
+plt.savefig('Autocorrelatiion.svg', format='svg')
 test_adf(df['Close'])
 test_kpps(df['Close'])
+day_analysis(df['Close'])
 
 if __name__ == '__main__':
-    print(df)
+    pass

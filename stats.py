@@ -138,3 +138,15 @@ def test_kpps(series):
     else:
         text += "\nNo evidence to reject null hypothesis. Hence, the series is stationary"
     print(text)
+
+
+def day_analysis(series):
+    days = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+    tmp_dict = {}
+
+    for j in series.index[:7]:
+        n = j.weekday()
+        tmp_dict[days[n]] = series.values[n::7]
+
+    frame = pd.DataFrame.from_dict(tmp_dict, orient='index').transpose()
+    print(frame)
