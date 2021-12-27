@@ -1,5 +1,4 @@
 *.csv
-*.svg
 *.h5
 *.iml
 venv
