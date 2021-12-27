@@ -1,5 +1,8 @@
 *.csv
 *.svg
-.h5
+*.h5
 *.iml
 venv
+test.py
+*.docx
+__pycache__/
