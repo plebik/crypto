@@ -1,6 +1,7 @@
 from utils import *
 
+
 if __name__ == '__main__':
     btc = Crypto('BTC-USD', 'max')
-
-    print(btc.day())
+    env = Environment(1000)
+    env.backtest()

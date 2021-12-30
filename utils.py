@@ -1,12 +1,9 @@
-import matplotlib.pyplot as plt
-from statsmodels.tsa.stattools import adfuller, kpss
 import warnings
+
+import matplotlib.pyplot as plt
 import yfinance as yf
-from ta.momentum import *
-from ta.volume import *
+from statsmodels.tsa.stattools import adfuller, kpss
 from ta.volatility import *
-from ta.trend import *
-from ta.others import *
 
 warnings.filterwarnings("ignore")
 
@@ -72,72 +69,7 @@ class Crypto:
         return info.round(2)
 
     def fetch(self):
-        df = yf.Ticker(self.pair).history(period=self.period).filter(['Open', 'High', 'Low', 'Close', 'Volume'])
-        _open, high, low, close, volume = df['Open'], df['High'], df['Low'], df['Close'], df['Volume']
-        df['awesome_oscillator'] = awesome_oscillator(high, low)
-        df['kama'] = kama(close)
-        df['ppo'] = ppo(close)
-        df['ppo_signal'] = ppo_signal(close)
-        df['pvo'] = pvo(volume)
-        df['pvo_signal'] = pvo_signal(volume)
-        df['roc'] = roc(close)
-        df['rsi'] = rsi(close)
-        df['stochrsi'] = stochrsi(close)
-        df['stoch'] = stoch(close, high, low)
-        df['stoch_signal'] = stoch_signal(close, high, low)
-        df['tsi'] = tsi(close)
-        df['ultimate_oscillator'] = ultimate_oscillator(high, low, close)
-        df['williams_r'] = williams_r(high, low, close)
-        df['acc_dist_index'] = acc_dist_index(high, low, close, volume)
-        df['chaikin_money_flow'] = chaikin_money_flow(high, low, close, volume)
-        df['ease_of_movement'] = ease_of_movement(high, low, volume)
-        df['sma_ease_of_movement'] = sma_ease_of_movement(high, low, volume)
-        df['force_index'] = force_index(close, volume)
-        df['money_flow_index'] = money_flow_index(high, low, close, volume)
-        df['negative_volume_index'] = negative_volume_index(close, volume)
-        df['on_balance_volume'] = on_balance_volume(close, volume)
-        df['volume_price_trend'] = volume_price_trend(close, volume)
-        df['volume_weighted_average_price'] = volume_weighted_average_price(high, low, close, volume)
-        df['average_true_range'] = average_true_range(high, low, close)
-        df['bollinger_hband'] = bollinger_hband(close)
-        df['bollinger_lband'] = bollinger_lband(close)
-        df['bollinger_mavg'] = bollinger_mavg(close)
-        df['bollinger_pband'] = bollinger_pband(close)
-        df['bollinger_wband'] = bollinger_wband(close)
-        df['donchian_channel_hband'] = donchian_channel_hband(high, low, close)
-        df['donchian_channel_lband'] = donchian_channel_lband(high, low, close)
-        df['donchian_channel_mband'] = donchian_channel_mband(high, low, close)
-        df['donchian_channel_pband'] = donchian_channel_pband(high, low, close)
-        df['donchian_channel_wband'] = donchian_channel_wband(high, low, close)
-        df['keltner_channel_hband'] = keltner_channel_hband(high, low, close)
-        df['keltner_channel_lband'] = keltner_channel_lband(high, low, close)
-        df['keltner_channel_mband'] = keltner_channel_mband(high, low, close)
-        df['keltner_channel_pband'] = keltner_channel_pband(high, low, close)
-        df['keltner_channel_wband'] = keltner_channel_wband(high, low, close)
-        df['ulcer_index'] = ulcer_index(close)
-        df['aroon_down'] = aroon_down(close)
-        df['aroon_up'] = aroon_up(close)
-        df['cci'] = cci(high, low, close)
-        df['dpo'] = dpo(close)
-        df['ema_indicator'] = ema_indicator(close)
-        df['ichimoku_a'] = ichimoku_a(high, low)
-        df['ichimoku_b'] = ichimoku_b(high, low)
-        df['ichimoku_base_line'] = ichimoku_base_line(high, low)
-        df['ichimoku_conversion_line'] = ichimoku_conversion_line(high, low)
-        df['kst'] = kst(close)
-        df['kst_sig'] = kst_sig(close)
-        df['macd'] = macd(close)
-        df['macd_signal'] = macd_signal(close)
-        df['mass_index'] = mass_index(high, low)
-        df['sma'] = sma_indicator(close)
-        df['stc'] = stc(close)
-        df['trix'] = trix(close)
-        df['vortex_indicator_neg'] = vortex_indicator_neg(high, low, close)
-        df['vortex_indicator_pos'] = vortex_indicator_pos(high, low, close)
-        df['cumulative_return'] = cumulative_return(close)
-        df['daily_return'] = daily_return(close)
-
-        return df
+        return yf.Ticker(self.pair).history(period=self.period).filter(['Open', 'High', 'Low', 'Close', 'Volume'])
 
     def growth_plot(self):
         plt.style.use('seaborn')
@@ -159,7 +91,7 @@ class Crypto:
         plt.tight_layout()
         plt.savefig('plots/Rates of Return.svg', format='svg')
 
-    def test_adf(self, description=False):
+    def test_adf(self, info=False):
         test, p_value, _, _, crit, _ = adfuller(self.close)
         text = f"AUGMENTED DICKEY-FULLER TEST\n" \
                f"Test's statistics: {round(test, 4)}\n" \
@@ -176,12 +108,12 @@ class Crypto:
             text += "\nWe can reject the null hypothesis and take that the series is stationary\n"
             result = True
 
-        if description:
+        if info:
             print(text)
 
         return result
 
-    def test_kpps(self, description=False):
+    def test_kpps(self, info=False):
         test, p_value, _, crit = kpss(self.close)
 
         text = f"KPPS TEST\nTest's statistics: {round(test, 4)}\n" \
@@ -193,14 +125,14 @@ class Crypto:
                f"1%: {round(crit['1%'], 4)}\n"
 
         if all(i < test for i in list(crit.values())):
-            text += "\nThere is evidence for rejecting the null hypothesis in favor of the alternative." \
+            text += "\nThere is an evidence for rejecting the null hypothesis in favor of the alternative." \
                     "Hence, the series is non-stationary\n"
             result = False
         else:
             text += "\nNo evidence to reject null hypothesis. Hence, the series is stationary\n"
             result = True
 
-        if description:
+        if info:
             print(text)
 
         return result
@@ -214,3 +146,41 @@ class Crypto:
     # TODO zrobic analize dnia tygodnia
     def day_analysis(self):
         pass
+
+
+class Environment(Crypto):
+    def __init__(self, balance):
+        super().__init__()
+        self.balance = balance
+        self.units = 0.0
+        self.fee = 0.999
+
+    def buy(self, price, amount=10.0):
+        self.units = (amount * self.fee) / price
+        self.balance -= amount
+        print(f"BUY: {round(price, 2)} Balance: {round(self.balance, 2)}")
+
+    def sell(self, price):
+        self.balance += self.units * price * self.fee
+        self.units = 0.0
+        print(f"SELL: {round(price, 2)} Balance: {round(self.balance, 2)}")
+
+    def backtest(self, strategy='bollinger'):
+        if strategy == 'bollinger':
+            frame = self.frame.copy().filter(['Close'])
+            upper = bollinger_hband(frame['Close'])
+            lower = bollinger_lband(frame['Close'])
+            price = frame['Close']
+            balance = []
+            for i in frame.index:
+                if price[i] >= upper[i] and self.units > 0.0:
+                    self.sell(price[i])
+                if price[i] <= lower[i]:
+                    self.buy(price[i])
+
+                balance.append(self.balance)
+
+            plt.plot(price[-100:])
+            plt.plot(upper[-100:])
+            plt.plot(lower[-100:])
+            plt.show()
