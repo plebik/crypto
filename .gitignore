@@ -1,7 +1,1 @@
-*.csv
-*.h5
-*.iml
 venv
-test.py
-*.docx
-__pycache__/
