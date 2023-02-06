@@ -1,36 +1,34 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
-from statsmodels.formula.api import ols
-from statsmodels.stats.stattools import durbin_watson
 
 plt.style.use('fivethirtyeight')
 
-data = pd.read_csv('data.csv')
-data['Time'] = pd.to_datetime(data['Time'])
-clear_data = data.dropna()
-
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-ax1.plot(clear_data['Time'], clear_data['Close_BTC'], color='red', linewidth=1.5)
-ax1.set_xlabel('Time', fontsize=14)
-ax1.set_ylabel('BTC Price', fontsize=14)
-
-ax1_1 = ax1.twinx()
-# make a plot with different y-axis using second axis object
-ax1_1.plot(clear_data['Time'], clear_data['Close_BNB'], color="blue", linewidth=1.5)
-ax1_1.set_ylabel('BNB Price', fontsize=14)
-ax1_1.set_ylim(top=max(clear_data['Close_BNB']) * 2)
+frame = pd.read_csv('data.csv').dropna()
+frame['Time'] = pd.to_datetime(frame['Time'])
 
 
-plt.tick_params(axis='x', which='major', labelsize=10)
-plt.tight_layout()
-plt.grid(False)
-plt.show()
+def get_plot(data, name1, name2):
+    fig, ax = plt.subplots()
+    ax.plot(data['Time'], data[f'Close_{name1}'], color='red', linewidth=1.5)
+    ax.set_xlabel('Time', fontsize=14, weight="bold")
+    ax.set_ylabel('BTC Price', fontsize=14, weight="bold")
 
-# print(clear_data['Time'])
+    ax2 = ax.twinx()
+    ax2.plot(data['Time'], data[f'Close_{name2}'], color="blue", linewidth=1.5)
+    ax2.set_ylabel('BNB Price', fontsize=14, weight="bold")
+    ax2.set_ylim(top=max(data[f'Close_{name2}']) * 2)
 
-# model = ols('Close_btc ~ Close_bnb + Close_xmr + Close_bat', data=joint).fit()
+    ax2.set_title(f"{name1} vs {name2}\nρ={round(data[f'Close_{name1}'].corr(frame[f'Close_{name2}']), 2)}",
+                  weight="bold")
+    fig.autofmt_xdate()
+    plt.tick_params(axis='x', which='major', labelsize=10)
+    plt.tight_layout()
+    plt.grid(False)
 
-# view model summary
-# print(model.summary())
+    plt.savefig(f"plots/{name1} vs {name2}")
 
-# print(durbin_watson(model.resid))
+
+os.makedirs("plots", exist_ok=True)
+for i in ['BNB', 'XMR', 'BAT']:
+    get_plot(frame, "BTC", i)

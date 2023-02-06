@@ -1,4 +1,6 @@
 venv
-data
+plots
+data.csv
 vars.txt
 master_thesis.iml
+.idea/
