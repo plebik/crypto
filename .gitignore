@@ -3,5 +3,5 @@ venv
 __pycache__/
 plots
 data.csv
-vars.txt
+*.txt
 master_thesis.iml

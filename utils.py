@@ -91,7 +91,7 @@ class Crypto:
                               data.kurtosis().values[0]],
                              index=['mean', 'std', 'volatility', 'skew', 'kurtosis'],
                              columns=['value'])
-        return round(frame, 3)
+        return round(frame, 2)
 
     @staticmethod
     def basic_statistics_for_each_day(data):
@@ -108,7 +108,6 @@ class Crypto:
         daily_subsets = {}
         for i, j in annual_subsets.items():
             daily_subsets[i] = Crypto.daily_subsets(j)
-            print()
             for k in daily_subsets[i].keys():
                 daily_subsets[i][k] = daily_subsets[i][k].mean().values[0]
 
