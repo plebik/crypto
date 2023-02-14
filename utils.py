@@ -1,8 +1,10 @@
 import os
 import pandas as pd
+import numpy as np
 from binance.client import Client
 import warnings
 import matplotlib.pyplot as plt
+from datetime import date, datetime
 
 plt.style.use('fivethirtyeight')
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -11,37 +13,120 @@ pd.set_option("display.max_columns", 10)
 pd.options.mode.chained_assignment = None
 
 
-def download_data(client, symbol, timeframe="1d", start='2018-01-01', stop='2022-12-31'):
-    tmp = pd.DataFrame(client.get_historical_klines(f"{symbol}USDT", timeframe, start, stop),
-                       columns=['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time',
-                                'Quote asset volume', 'Number of trades', 'Taker buy base asset volume',
-                                'Taker buy quote asset volume', 'Ignore'])
+class Crypto:
+    def __init__(self, name):
+        self.data = self.fetch_data(name)
+        self.data['r'] = 100 * np.log(self.data['Close'] / self.data['Close'].shift(1))
+        self.name = name
 
-    tmp = tmp[['Close time', 'Open', 'High', 'Low', 'Close', 'Volume']]
-    tmp.columns = ['Time', f'Open_{symbol}', f'High_{symbol}', f'Low_{symbol}', f'Close_{symbol}', f'Volume_{symbol}']
-    tmp['Time'] = pd.to_datetime(tmp['Time'], unit='ms')
+    def __str__(self):
+        return self.name
 
-    return tmp
+    @staticmethod
+    def fetch_data(symbol, timeframe="1d", start='2018-01-01', stop='2022-12-31'):
+        with open('vars.txt') as f:
+            lines = f.readlines()
 
+        api_key, secret_key = lines[0][:-2], lines[1]
 
-def get_data(symbols=None, timeframe=None):
-    if symbols is None:
-        symbols = ['BTC', 'BNB', 'XMR', 'BAT']
-    if timeframe is None:
-        timeframe = "1d"
-    with open('vars.txt') as f:
-        lines = f.readlines()
+        client = Client(api_key, secret_key)
+        tmp = pd.DataFrame(client.get_historical_klines(f"{symbol}USDT", timeframe, start, stop),
+                           columns=['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time',
+                                    'Quote asset volume', 'Number of trades', 'Taker buy base asset volume',
+                                    'Taker buy quote asset volume', 'Ignore'])
 
-    api_key, secret_key = lines[0][:-2], lines[1]
-    client = Client(api_key, secret_key)
+        tmp = tmp[['Close time', 'Close', 'Volume']]
+        tmp.columns = ['Time', 'Close', 'Volume']
+        tmp['Time'] = pd.to_datetime(tmp['Time'], unit='ms')
+        tmp['Time'] = tmp['Time'].dt.date
+        tmp.index = tmp['Time']
+        tmp.drop(columns=['Time'], inplace=True)
+        tmp['Close'] = pd.to_numeric(tmp['Close'])
+        tmp['Volume'] = pd.to_numeric(tmp['Volume'])
 
-    data = [download_data(client, i, timeframe=timeframe)[['Time', f'Close_{i}', f'Volume_{i}']] for i in symbols]
+        return tmp
 
-    frame = data[0]
-    for i in range(1, len(data)):
-        frame = frame.merge(data[i], on='Time', how='outer')
+    @staticmethod
+    def daily_subsets(data):
+        if isinstance(data, pd.DataFrame):
+            data['day'] = list(map(lambda x: date.weekday(x), data.index))
+            dictionary = {
+                'all_days': data,
+                'monday': data[data['day'] == 0],
+                'tuesday': data[data['day'] == 1],
+                'wednesday': data[data['day'] == 2],
+                'thursday': data[data['day'] == 3],
+                'friday': data[data['day'] == 4],
+                'saturday': data[data['day'] == 5],
+                'sunday': data[data['day'] == 6]
+            }
+            for i in dictionary.values():
+                i.drop(columns=['day'], inplace=True)
 
-    frame[:-1].to_csv('data.csv', index=False)
+            return dictionary
+        else:
+            raise Exception("The object passed to the function has to be a dataframe")
+
+    @staticmethod
+    def annual_subsets(data):
+        if isinstance(data, pd.DataFrame):
+            data['year'] = list(map(lambda x: x.year, data.index))
+            dictionary = {}
+            for i in np.unique(data['year']):
+                dictionary[i] = data[data['year'] == i]
+
+            for i in dictionary.values():
+                i.drop(columns=['year'], inplace=True)
+
+            return dictionary
+        else:
+            raise Exception("The object passed to the function has to be a dataframe")
+
+    @staticmethod
+    def basic_statistics(data):
+        frame = pd.DataFrame([data.mean().values[0],
+                              data.std().values[0],
+                              data.std().values[0] / data.mean().values[0],
+                              data.skew().values[0],
+                              data.kurtosis().values[0]],
+                             index=['mean', 'std', 'volatility', 'skew', 'kurtosis'],
+                             columns=['value'])
+        return round(frame, 3)
+
+    @staticmethod
+    def basic_statistics_for_each_day(data):
+        daily_subsets = Crypto.daily_subsets(data)
+        statistics = [Crypto.basic_statistics(i) for i in daily_subsets.values()]
+        frame = pd.concat(statistics, axis=1)
+        frame.columns = ["all_days", 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+        return frame
+
+    @staticmethod
+    def average_daily_returns_indices_by_annual_sub_periods(data):
+        annual_subsets = Crypto.annual_subsets(data)
+        daily_subsets = {}
+        for i, j in annual_subsets.items():
+            daily_subsets[i] = Crypto.daily_subsets(j)
+            print()
+            for k in daily_subsets[i].keys():
+                daily_subsets[i][k] = daily_subsets[i][k].mean().values[0]
+
+        return pd.DataFrame(daily_subsets.values(), index=list(daily_subsets.keys()))
+
+    def day_of_the_week_analysis(self):
+        frame = self.data.copy()
+
+        return self.data
+
+    def event_analysis(self):
+        pass
+
+    def volume_analysis(self):
+        pass
+
+    def plot(self):
+        pass
 
 
 def get_plot(data, symbol='BTC'):
@@ -52,51 +137,3 @@ def get_plot(data, symbol='BTC'):
 
     os.makedirs("plots", exist_ok=True)
     plt.savefig(f"plots/{symbol}")
-
-
-def basic_statistics(data):
-    tmp = data.copy()
-    info = tmp.describe()
-    info.loc['kurtosis'] = tmp.kurtosis()
-    info.loc['skew'] = tmp.skew()
-    info.loc['volatility'] = [tmp[i].std() / tmp[i].mean() for i in info.columns]
-
-    info = info.transpose()[['mean', '50%', 'std', 'volatility', 'skew', 'kurtosis']]
-    info.columns = ['Średnia', 'Mediana', 'Odchylenie stand.', 'Wsp. zmienności', 'Skośność', 'Kurtoza']
-    return info
-
-
-def day_of_the_week_effect(data, target):
-    tmp = data.copy()
-    tmp['Time'] = pd.to_datetime(tmp['Time'])
-    tmp = tmp[['Time', f'Close_{target}']]
-    tmp['R'] = 0
-    for i in tmp.index[1:]:
-        tmp['R'][i] = ((tmp[f'Close_{target}'][i] / tmp[f'Close_{target}'][i - 1]) - 1) * 100
-
-    tmp['Day'] = tmp['Time'].apply(lambda x: x.weekday())
-    tmp['D0'], tmp['D1'], tmp['D2'], tmp['D3'], tmp['D4'], tmp['D5'], tmp['D6'] = 0, 0, 0, 0, 0, 0, 0
-    for i in tmp.index:
-        match tmp['Day'][i]:
-            case 0:
-                tmp['D0'][i] = 1
-            case 1:
-                tmp['D1'][i] = 1
-            case 2:
-                tmp['D2'][i] = 1
-            case 3:
-                tmp['D3'][i] = 1
-            case 4:
-                tmp['D4'][i] = 1
-            case 5:
-                tmp['D5'][i] = 1
-            case 6:
-                tmp['D6'][i] = 1
-
-    # ANOVA
-
-    return tmp.drop(columns=['Day'])
-
-
-def volume_anlysis(data):
-    pass
