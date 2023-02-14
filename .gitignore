@@ -1,6 +1,7 @@
 venv
+.idea/
+__pycache__/
 plots
 data.csv
 vars.txt
 master_thesis.iml
-.idea/
