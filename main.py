@@ -1,22 +1,22 @@
 from utils import Crypto
+import os
 
 if __name__ == '__main__':
     btc = Crypto('BTC')
+    print(btc.arch(btc.data['r']))
 
 
 def analysis(symbols=None):
+    os.makedirs("csv", exist_ok=True)
     if symbols is None:
         symbols = ['BTC', 'BNB', 'XMR', 'BAT']
     cryptos = [Crypto(i) for i in symbols]
-    with open('basic_statistics.txt', 'w') as file:
-        for i in cryptos:
-            file.write(i.name + str(i.basic_statistics_for_each_day(i.data[['r']])))
-            file.write("\n\n")
+    for i in cryptos:
+        frame = i.basic_statistics_for_each_day(i.data[['r']])
+        frame.to_csv(f'csv/statistics.csv', mode='a', header=False)
 
-    with open('daily_returns_by_annual_sub-periods.txt', 'w') as file:
-        for i in cryptos:
-            file.write(i.name + str(i.average_daily_returns_indices_by_annual_sub_periods(i.data[['r']])))
-            file.write("\n\n")
+    for i in cryptos:
+        frame = i.average_daily_returns_indices_by_annual_sub_periods(i.data[['r']])
+        frame.to_csv(f'csv/returns.csv', mode='a', header=False)
 
-
-analysis()
+# analysis()

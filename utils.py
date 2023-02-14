@@ -4,7 +4,9 @@ import numpy as np
 from binance.client import Client
 import warnings
 import matplotlib.pyplot as plt
-from datetime import date, datetime
+from datetime import date
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.stats.diagnostic import acorr_ljungbox, het_arch
 
 plt.style.use('fivethirtyeight')
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -109,14 +111,53 @@ class Crypto:
         for i, j in annual_subsets.items():
             daily_subsets[i] = Crypto.daily_subsets(j)
             for k in daily_subsets[i].keys():
-                daily_subsets[i][k] = daily_subsets[i][k].mean().values[0]
+                daily_subsets[i][k] = round(daily_subsets[i][k].mean().values[0], 2)
 
         return pd.DataFrame(daily_subsets.values(), index=list(daily_subsets.keys()))
 
-    def day_of_the_week_analysis(self):
-        frame = self.data.copy()
+    @staticmethod
+    def adf(data, regression='c'):
+        output = adfuller(data.dropna(), regression=regression)
+        text = "\n------------------------------------------------------\n" \
+               "H0: Time series is non-stationary\n" \
+               "H1: Time series is stationary\n\n" \
+               f"Test statistic:\t{round(output[0], 2)}\n" \
+               f"P-value:\t{output[1]}\n" \
+               f"Number of lags:\t{output[2]}\n" \
+               f"Critical values:\n" \
+               f"1%:\t\t{round(output[4]['1%'], 2)}\n" \
+               f"5%:\t\t{round(output[4]['5%'], 2)}\n1" \
+               f"0%:\t{round(output[4]['10%'], 2)}" \
+               "\n------------------------------------------------------\n"
+        if output[1] < 0.05:
+            text += "We reject null hypothesis. Time series is stationary"
+        else:
+            text += "We fail to reject the null hypothesis. Time series is  non-stationary"
+        return text
 
-        return self.data
+    @staticmethod
+    def box_pierce(data):
+        output = acorr_ljungbox(data.dropna(), boxpierce=True)
+        output.columns = ['Ljung-Box_stat', 'Ljung-Box_pvalue', 'Box-Pierce_stat', 'Box-Pierce_pvaue']
+
+        return output
+
+    @staticmethod
+    def arch(data):
+        output = het_arch(data.dropna())
+        text = f"--------------------------------\n" \
+               f"Lagrange test statistic:\t{round(output[0], 3)}\n" \
+               f"Lagrange p-value:\t{round(output[1], 3)}\n" \
+               f"F statistics of F test:\t{round(output[2], 3)}\n" \
+               f"F test p-value:\t{round(output[3], 3)}\n" \
+               f"--------------------------------\n"
+
+        return text
+
+    def day_of_the_week_analysis(self):
+        print(Crypto.adf(self.data['r']))
+
+        return ''
 
     def event_analysis(self):
         pass
