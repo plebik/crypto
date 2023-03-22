@@ -1,9 +1,8 @@
-from utils import Crypto
 import os
 
-if __name__ == '__main__':
-    btc = Crypto('BTC')
-    print(btc.arch(btc.data['r']))
+import pandas as pd
+
+from utils import *
 
 
 def analysis(symbols=None):
@@ -13,10 +12,23 @@ def analysis(symbols=None):
     cryptos = [Crypto(i) for i in symbols]
     for i in cryptos:
         frame = i.basic_statistics_for_each_day(i.data[['r']])
-        frame.to_csv(f'csv/statistics.csv', mode='a', header=False)
+        frame.to_csv('csv/statistics.csv', mode='a', header=False)
 
-    for i in cryptos:
         frame = i.average_daily_returns_indices_by_annual_sub_periods(i.data[['r']])
-        frame.to_csv(f'csv/returns.csv', mode='a', header=False)
+        frame.to_csv('csv/returns.csv', mode='a', header=False)
 
-# analysis()
+    tmp = pd.concat([i.data[['Close', 'Volume']] for i in cryptos], axis=1)
+    tmp.columns = ['BTC', 'BTC_vol', 'BNB', 'BNB_vol', 'XMR', 'XMR_vol', 'BAT', 'BAT_vol']
+    tmp.to_csv('csv/data.csv')
+
+
+if __name__ == '__main__':
+
+    # analysis()
+    btc = Crypto('BTC')
+    bnb = Crypto('BNB')
+
+    cryptos = [btc, bnb]
+
+    print(Crypto.volume_analysis(cryptos, plot=False))
+

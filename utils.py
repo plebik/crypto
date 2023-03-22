@@ -1,16 +1,17 @@
 import os
-import pandas as pd
-import numpy as np
-from binance.client import Client
 import warnings
-import matplotlib.pyplot as plt
 from datetime import date
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.stats.diagnostic import acorr_ljungbox, het_arch
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+from binance.client import Client
+from scipy.stats import pearsonr
 
 plt.style.use('fivethirtyeight')
 warnings.simplefilter(action='ignore', category=FutureWarning)
-pd.set_option("display.max_columns", 10)
+# pd.set_option("display.max_columns", 10)
 
 pd.options.mode.chained_assignment = None
 
@@ -18,7 +19,8 @@ pd.options.mode.chained_assignment = None
 class Crypto:
     def __init__(self, name):
         self.data = self.fetch_data(name)
-        self.data['r'] = 100 * np.log(self.data['Close'] / self.data['Close'].shift(1))
+        # self.data['return'] = 100 * np.log(self.data['Close'] / self.data['Close'].shift(1))
+        self.data.index = pd.to_datetime(self.data.index)
         self.name = name
 
     def __str__(self):
@@ -115,58 +117,197 @@ class Crypto:
 
         return pd.DataFrame(daily_subsets.values(), index=list(daily_subsets.keys()))
 
-    @staticmethod
-    def adf(data, regression='c'):
-        output = adfuller(data.dropna(), regression=regression)
-        text = "\n------------------------------------------------------\n" \
-               "H0: Time series is non-stationary\n" \
-               "H1: Time series is stationary\n\n" \
-               f"Test statistic:\t{round(output[0], 2)}\n" \
-               f"P-value:\t{output[1]}\n" \
-               f"Number of lags:\t{output[2]}\n" \
-               f"Critical values:\n" \
-               f"1%:\t\t{round(output[4]['1%'], 2)}\n" \
-               f"5%:\t\t{round(output[4]['5%'], 2)}\n1" \
-               f"0%:\t{round(output[4]['10%'], 2)}" \
-               "\n------------------------------------------------------\n"
-        if output[1] < 0.05:
-            text += "We reject null hypothesis. Time series is stationary"
-        else:
-            text += "We fail to reject the null hypothesis. Time series is  non-stationary"
-        return text
+    def preliminary_analysis(self):
+        # ADF
 
-    @staticmethod
-    def box_pierce(data):
-        output = acorr_ljungbox(data.dropna(), boxpierce=True)
-        output.columns = ['Ljung-Box_stat', 'Ljung-Box_pvalue', 'Box-Pierce_stat', 'Box-Pierce_pvaue']
-
-        return output
-
-    @staticmethod
-    def arch(data):
-        output = het_arch(data.dropna())
-        text = f"--------------------------------\n" \
-               f"Lagrange test statistic:\t{round(output[0], 3)}\n" \
-               f"Lagrange p-value:\t{round(output[1], 3)}\n" \
-               f"F statistics of F test:\t{round(output[2], 3)}\n" \
-               f"F test p-value:\t{round(output[3], 3)}\n" \
-               f"--------------------------------\n"
-
-        return text
+        # BOX
+        pass
 
     def day_of_the_week_analysis(self):
-        print(Crypto.adf(self.data['r']))
+        df = self.data[['return']].copy()
+        df['Monday'] = list(map(lambda x: 1 if x == 0 else 0, df.index.weekday))
+        df['Tuesday'] = list(map(lambda x: 1 if x == 1 else 0, df.index.weekday))
+        df['Wednesday'] = list(map(lambda x: 1 if x == 2 else 0, df.index.weekday))
+        df['Thursday'] = list(map(lambda x: 1 if x == 3 else 0, df.index.weekday))
+        df['Friday'] = list(map(lambda x: 1 if x == 4 else 0, df.index.weekday))
+        df['Saturday'] = list(map(lambda x: 1 if x == 5 else 0, df.index.weekday))
+        df['Sunday'] = list(map(lambda x: 1 if x == 6 else 0, df.index.weekday))
 
-        return ''
+        df.dropna(inplace=True)
+        # Equation 1
+        X_1 = df[df.columns[1:]]
+        X_1 = sm.add_constant(X_1)
+        y_1 = df['return']
+
+        model_1 = sm.OLS(y_1, X_1).fit()
+        print(model_1.summary())
+
+        s = 3  # TUTAJ SPRAWDZIĆ
+        for i in range(1, s + 1):
+            df[f'delayed_{i}'] = df['return'].shift(-i)
+
+        df.dropna(inplace=True)
+
+        X_2 = df[df.columns[1:]]
+        X_2 = sm.add_constant(X_2)
+        y_2 = df['return']
+
+        model_2 = sm.OLS(y_2, X_2).fit()
+        print(model_2.summary())
+
+        return df.head(10)
 
     def event_analysis(self):
-        pass
+        # top_10 = self.data['']
+        plt.plot(np.cumsum(self.data['return']))
+        plt.show()
 
-    def volume_analysis(self):
-        pass
+    @staticmethod
+    def volume_analysis(cryptos, plot=False):
+        # data preparation
+        cryptos = preprocessing(cryptos)
 
-    def plot(self):
-        pass
+        # basic statistics
+        statistics = basic_stats(cryptos)
+
+        # correlations
+        total_corr = pd.Series()
+        for crypto in cryptos:
+            data = crypto[0].dropna()
+            name = crypto[1]
+            y = data[f'V_{name}']
+            x1, x2, x3 = data[f'P_{name}'], data[f'R_{name}'], data[f'D_{name}']
+            total_corr = pd.concat([total_corr, pd.Series({f'P_{name}': correlation(x1, y),
+                                                           f'R_{name}': correlation(x2, y),
+                                                           f'D_{name}': correlation(x3, y)})], axis=0)
+
+        return total_corr
+
+        # period_corr = pd.DataFrame(columns=[f'P_{self.name}', f'R_{self.name}', f'D_{self.name}'])
+        # date = ['2018-12-15', '2019-06-26', '2020-03-12', '2021-04-13', '2021-07-20', '2021-11-08']
+        #
+        # counter = 0
+        # while counter < len(date):
+        #     if counter == 0:
+        #         try:
+        #             tmp = df.iloc[0:df.index.get_loc(date[counter]) + 1]
+        #         except KeyError:
+        #             tmp = df.iloc[0:df.index.get_loc(date[counter + 1]) + 1]
+        #             counter += 1
+        #     elif counter == len(date) - 1:
+        #         tmp = df.iloc[df.index.get_loc(date[counter]):]
+        #     else:
+        #         tmp = df.iloc[df.index.get_loc(date[counter - 1]):df.index.get_loc(date[counter])]
+        #
+        #     period_corr.loc[f'period_{counter}'] = [round(tmp[f'{j}_{self.name}'].corr(tmp[f'V_{self.name}']), 2) for j
+        #                                             in ['P', 'R', 'D']]
+        #
+        #     counter += 1
+
+        # # plot to choose periods
+        # if plot and self.name == 'BTC':
+        #     plt.plot(df['P_BTC'], lw=1, color='black')
+        #     for d in date:
+        #         vline_date = dt.datetime.strptime(d, '%Y-%m-%d').date()
+        #         plt.axvline(vline_date, color='black', lw=1)
+        #     plt.tight_layout()
+        #     plt.savefig("plots/volume_analysis.png")
+        #     plt.show()
+        #
+        # # autocorrelation
+        # overall_autocorr = pd.DataFrame(0, index=['Statistic', 'p_value'],
+        #                                 columns=[f'{i}_{self.name}' for i in ['P', 'R', 'D', 'V']])
+        # for i in overall_autocorr.columns:
+        #     overall_autocorr[i] = dickey_fuller(df[i].dropna())[:2]
+        #
+        # period_autocorr = pd.DataFrame(0, index=[f'{i}_{self.name}' for i in ['P', 'R', 'D', 'V']],
+        #                                columns=[f'period_{j + 1}' for j in range(len(date))])
+
+        # counter = 0
+        # while counter < len(date):
+        #     if counter == 0:
+        #         try:
+        #             tmp = df.iloc[0:df.index.get_loc(date[counter]) + 1]
+        #         except KeyError:
+        #             tmp = df.iloc[0:df.index.get_loc(date[counter + 1]) + 1]
+        #             counter += 1
+        #     elif counter == len(date) - 1:
+        #         tmp = df.iloc[df.index.get_loc(date[counter]):]
+        #     else:
+        #         tmp = df.iloc[df.index.get_loc(date[counter - 1]):df.index.get_loc(date[counter])]
+        #
+        #     period_autocorr[f'period_{counter + 1}'] = [dickey_fuller(tmp[f'{j}_{self.name}'].dropna())[2] for j in
+        #                                                 ['P', 'R', 'D', 'V']]
+        #
+        #     counter += 1
+        #
+        #
+        #
+        # # # Johansen Test
+        # # johansen_result = coint_johansen(df[[f'P_{self.name}', f'V_{self.name}']], det_order=0, k_ar_diff=0)
+        # # print(johansen_result.trace_stat_crit_vals)
+
+        # return stats, overall_corr, period_corr.transpose(), overall_autocorr.transpose(), period_autocorr
+        # return period_autocorr
+        #
+
+
+def basic_stats(cryptos):
+    statistics = pd.DataFrame(columns=['mean', 'median', 'std', 'volatility', 'skew', 'kurtosis'])
+    for crypto in cryptos:
+        stats = crypto[0].describe().transpose()[['mean', '50%', 'std']]
+        stats['volatility'] = (stats['std'] / stats['mean']) * 100
+        stats['skew'] = crypto[0].skew()
+        stats['kurtosis'] = crypto[0].kurtosis()
+        stats = stats.applymap(
+            lambda x: '{:.2e}'.format(x) if (0.01 > x > -0.01) or x < -1000000 or x > 1000000 else x)
+        stats = stats.applymap(lambda x: x if isinstance(x, str) else round(x, 2))
+        stats.columns = ['mean', 'median', 'std', 'volatility', 'skew', 'kurtosis']
+
+        statistics = pd.concat([statistics, stats])
+
+    return statistics.sort_index(axis=0)
+
+
+def preprocessing(cryptos):
+    processed = []
+    for crypto in cryptos:
+        tmp = crypto.data.copy()
+        tmp.columns = ['P', 'V']
+        tmp['R'] = np.log(tmp['P']) - np.log(tmp['P'].shift(1))
+        tmp['D'] = [np.std(tmp.iloc[i - 20:i + 1]['R']) for i in range(tmp.shape[0])]
+        tmp.columns = [f'{i}_{crypto.name}' for i in ['P', 'R', 'D', 'V']]
+        processed.append((tmp, crypto.name))
+    return processed
+
+
+def correlation(x, y):
+    corr, p_value = pearsonr(x, y)
+    if p_value < 0.01:
+        p_value = '{:.2e}'.format(p_value)
+    else:
+        p_value = round(p_value, 2)
+    return f"{round(corr, 2)}[{p_value}]"
+
+
+def dickey_fuller(data):
+    decision = 1
+
+    result = sm.tsa.stattools.adfuller(data.dropna(), regression='c')
+    stat, p_value = round(result[0], 4), result[1]
+
+    if p_value >= 0.05:
+        decision = 0
+    else:
+        if stat >= result[4]['5%']:
+            decision = 0
+
+    if p_value < 0.01:
+        p_value = '{:.2e}'.format(p_value)
+    else:
+        p_value = round(p_value, 2)
+
+    return [stat, p_value, decision]
 
 
 def get_plot(data, symbol='BTC'):
