@@ -1,7 +1,3 @@
-import os
-
-import pandas as pd
-
 from utils import *
 
 
@@ -23,12 +19,12 @@ def analysis(symbols=None):
 
 
 if __name__ == '__main__':
-
     # analysis()
     btc = Crypto('BTC')
     bnb = Crypto('BNB')
+    xmr = Crypto('XMR')
+    bat = Crypto('BAT')
 
-    cryptos = [btc, bnb]
+    cryptos = [btc, bnb, xmr, bat]
 
     print(Crypto.volume_analysis(cryptos, plot=False))
-

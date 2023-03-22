@@ -1,3 +1,4 @@
+import datetime as dt
 import os
 import warnings
 from datetime import date
@@ -164,86 +165,74 @@ class Crypto:
 
     @staticmethod
     def volume_analysis(cryptos, plot=False):
-        # data preparation
-        cryptos = preprocessing(cryptos)
+        names = []
+        statistics = []
+        correlations = []
+        overall_autocorrelations = []
+        period_autocorrelations = []
+        dates = ['2018-12-15', '2019-06-26', '2020-03-12', '2021-04-13', '2021-07-20', '2021-11-08']
 
-        # basic statistics
-        statistics = basic_stats(cryptos)
-
-        # correlations
-        total_corr = pd.Series()
         for crypto in cryptos:
-            data = crypto[0].dropna()
-            name = crypto[1]
-            y = data[f'V_{name}']
-            x1, x2, x3 = data[f'P_{name}'], data[f'R_{name}'], data[f'D_{name}']
-            total_corr = pd.concat([total_corr, pd.Series({f'P_{name}': correlation(x1, y),
-                                                           f'R_{name}': correlation(x2, y),
-                                                           f'D_{name}': correlation(x3, y)})], axis=0)
+            names.append(crypto.name)
 
-        return total_corr
+            # data preparation
+            data = preprocessing(crypto)
 
-        # period_corr = pd.DataFrame(columns=[f'P_{self.name}', f'R_{self.name}', f'D_{self.name}'])
-        # date = ['2018-12-15', '2019-06-26', '2020-03-12', '2021-04-13', '2021-07-20', '2021-11-08']
-        #
-        # counter = 0
-        # while counter < len(date):
-        #     if counter == 0:
-        #         try:
-        #             tmp = df.iloc[0:df.index.get_loc(date[counter]) + 1]
-        #         except KeyError:
-        #             tmp = df.iloc[0:df.index.get_loc(date[counter + 1]) + 1]
-        #             counter += 1
-        #     elif counter == len(date) - 1:
-        #         tmp = df.iloc[df.index.get_loc(date[counter]):]
-        #     else:
-        #         tmp = df.iloc[df.index.get_loc(date[counter - 1]):df.index.get_loc(date[counter])]
-        #
-        #     period_corr.loc[f'period_{counter}'] = [round(tmp[f'{j}_{self.name}'].corr(tmp[f'V_{self.name}']), 2) for j
-        #                                             in ['P', 'R', 'D']]
-        #
-        #     counter += 1
+            # basic statistics
+            statistic = basic_stats(data)
+            statistics.append(statistic)
 
-        # # plot to choose periods
-        # if plot and self.name == 'BTC':
-        #     plt.plot(df['P_BTC'], lw=1, color='black')
-        #     for d in date:
-        #         vline_date = dt.datetime.strptime(d, '%Y-%m-%d').date()
-        #         plt.axvline(vline_date, color='black', lw=1)
-        #     plt.tight_layout()
-        #     plt.savefig("plots/volume_analysis.png")
-        #     plt.show()
-        #
-        # # autocorrelation
-        # overall_autocorr = pd.DataFrame(0, index=['Statistic', 'p_value'],
-        #                                 columns=[f'{i}_{self.name}' for i in ['P', 'R', 'D', 'V']])
-        # for i in overall_autocorr.columns:
-        #     overall_autocorr[i] = dickey_fuller(df[i].dropna())[:2]
-        #
-        # period_autocorr = pd.DataFrame(0, index=[f'{i}_{self.name}' for i in ['P', 'R', 'D', 'V']],
-        #                                columns=[f'period_{j + 1}' for j in range(len(date))])
+            # correlations
+            correlation = corr(data, dates)
+            correlations.append(correlation)
 
-        # counter = 0
-        # while counter < len(date):
-        #     if counter == 0:
-        #         try:
-        #             tmp = df.iloc[0:df.index.get_loc(date[counter]) + 1]
-        #         except KeyError:
-        #             tmp = df.iloc[0:df.index.get_loc(date[counter + 1]) + 1]
-        #             counter += 1
-        #     elif counter == len(date) - 1:
-        #         tmp = df.iloc[df.index.get_loc(date[counter]):]
-        #     else:
-        #         tmp = df.iloc[df.index.get_loc(date[counter - 1]):df.index.get_loc(date[counter])]
+            # autocorrelations
+            overall_autocorrelation = pd.DataFrame(0, index=['Statistic', 'p_value'],
+                                                   columns=[f'{i}_{data[1]}' for i in ['P', 'R', 'D', 'V']])
+            for i in overall_autocorrelation.columns:
+                overall_autocorrelation[i] = dickey_fuller(data[0][i].dropna())[:2]
+
+            overall_autocorrelations.append(overall_autocorrelation)
+
+            period_autocorrelation = auto_corr(data, dates)
+            period_autocorrelations.append(period_autocorrelation)
+
+            # johansen test
+
+            # The linear Granger causality test.
+
+            # plot to choose periods
+            if plot and crypto.name == 'BTC':
+                plt.plot(data[0]['P_BTC'], lw=1, color='black')
+                for d in dates:
+                    vline_date = dt.datetime.strptime(d, '%Y-%m-%d').date()
+                    plt.axvline(vline_date, color='black', lw=1)
+                plt.tight_layout()
+                plt.savefig("plots/volume_analysis.png")
+                plt.show()
+
+        # grouping and setting the order
+        grouped_statistics = pd.concat(statistics)
+        grouped_statistics = grouped_statistics.reindex([f'{i}_{j}' for i in ['P', 'R', 'V'] for j in names])
+
+        transposed = [df.T for df in correlations]
+        grouped_correlations = pd.concat(transposed)
+        grouped_correlations = grouped_correlations.reindex([f'{i}_{j}' for i in ['P', 'R', 'D'] for j in names])
+
+        transposed = [df.T for df in overall_autocorrelations]
+        grouped_overall_autocorrelations = pd.concat(transposed)
+        grouped_overall_autocorrelations = grouped_overall_autocorrelations.reindex(
+            [f'{i}_{j}' for i in ['P', 'R', 'D', 'V'] for j in names])
+
+        transposed = [df.T for df in period_autocorrelations]
+        grouped_period_autocorrelations = pd.concat(transposed)
+        grouped_period_autocorrelations = grouped_period_autocorrelations.reindex(
+            [f'{i}_{j}' for i in ['P', 'R', 'D', 'V'] for j in names])
+
+        return grouped_statistics, grouped_correlations, grouped_overall_autocorrelations, grouped_period_autocorrelations
+
         #
-        #     period_autocorr[f'period_{counter + 1}'] = [dickey_fuller(tmp[f'{j}_{self.name}'].dropna())[2] for j in
-        #                                                 ['P', 'R', 'D', 'V']]
-        #
-        #     counter += 1
-        #
-        #
-        #
-        # # # Johansen Test
+        # # #
         # # johansen_result = coint_johansen(df[[f'P_{self.name}', f'V_{self.name}']], det_order=0, k_ar_diff=0)
         # # print(johansen_result.trace_stat_crit_vals)
 
@@ -252,55 +241,81 @@ class Crypto:
         #
 
 
-def basic_stats(cryptos):
+def preprocessing(crypto):
+    tmp = crypto.data.copy()
+    tmp.columns = ['P', 'V']
+    tmp['R'] = np.log(tmp['P']) - np.log(tmp['P'].shift(1))
+    tmp['D'] = [np.std(tmp.iloc[i - 20:i + 1]['R']) for i in range(tmp.shape[0])]
+    tmp.columns = [f'{i}_{crypto.name}' for i in ['P', 'V', 'R', 'D']]
+
+    return tmp, crypto.name
+
+
+def basic_stats(data):
     statistics = pd.DataFrame(columns=['mean', 'median', 'std', 'volatility', 'skew', 'kurtosis'])
-    for crypto in cryptos:
-        stats = crypto[0].describe().transpose()[['mean', '50%', 'std']]
-        stats['volatility'] = (stats['std'] / stats['mean']) * 100
-        stats['skew'] = crypto[0].skew()
-        stats['kurtosis'] = crypto[0].kurtosis()
-        stats = stats.applymap(
-            lambda x: '{:.2e}'.format(x) if (0.01 > x > -0.01) or x < -1000000 or x > 1000000 else x)
-        stats = stats.applymap(lambda x: x if isinstance(x, str) else round(x, 2))
-        stats.columns = ['mean', 'median', 'std', 'volatility', 'skew', 'kurtosis']
+    tmp = data[0].describe().transpose()[['mean', '50%', 'std']]
+    tmp['volatility'] = (tmp['std'] / tmp['mean']) * 100
+    tmp['skew'] = data[0].skew()
+    tmp['kurtosis'] = data[0].kurtosis()
+    tmp = tmp.applymap(
+        lambda x: '{:.2e}'.format(x) if (0.01 > x > -0.01) or x < -1000000 or x > 1000000 else x)
+    tmp = tmp.applymap(lambda x: x if isinstance(x, str) else round(x, 2))
+    tmp.columns = ['mean', 'median', 'std', 'volatility', 'skew', 'kurtosis']
 
-        statistics = pd.concat([statistics, stats])
+    statistics = pd.concat([statistics, tmp])
+    statistics = statistics.reindex([f'{i}_{data[1]}' for i in ['P', 'R', 'V']])
 
-    return statistics.sort_index(axis=0)
-
-
-def preprocessing(cryptos):
-    processed = []
-    for crypto in cryptos:
-        tmp = crypto.data.copy()
-        tmp.columns = ['P', 'V']
-        tmp['R'] = np.log(tmp['P']) - np.log(tmp['P'].shift(1))
-        tmp['D'] = [np.std(tmp.iloc[i - 20:i + 1]['R']) for i in range(tmp.shape[0])]
-        tmp.columns = [f'{i}_{crypto.name}' for i in ['P', 'R', 'D', 'V']]
-        processed.append((tmp, crypto.name))
-    return processed
+    return statistics
 
 
-def correlation(x, y):
-    corr, p_value = pearsonr(x, y)
+def pearson(data):
+    data = data.dropna()
+    pearson_corr, p_value = pearsonr(data[data.columns[0]], data[data.columns[1]])
     if p_value < 0.01:
         p_value = '{:.2e}'.format(p_value)
     else:
         p_value = round(p_value, 2)
-    return f"{round(corr, 2)}[{p_value}]"
+
+    return f"{round(pearson_corr, 2)}[{p_value}]"
+
+
+def corr(data, dates):
+    results = pd.DataFrame(columns=[f'P_{data[1]}', f'R_{data[1]}', f'D_{data[1]}'])
+
+    counter = 0
+    while counter < len(dates):
+        if counter == 0:
+            try:
+                tmp = data[0].iloc[0:data[0].index.get_loc(dates[counter]) + 1]
+            except KeyError:
+                tmp = data[0].iloc[0:data[0].index.get_loc(dates[counter + 1]) + 1]
+                counter += 1
+        elif counter == len(dates) - 1:
+            tmp = data[0].iloc[data[0].index.get_loc(dates[counter]):]
+        else:
+            tmp = data[0].iloc[
+                  data[0].index.get_loc(dates[counter - 1]):data[0].index.get_loc(dates[counter])]
+
+        results.loc[f'period_{counter + 1}'] = [pearson(tmp[[f'{j}_{data[1]}', f'V_{data[1]}']]) for j in
+                                                ['P', 'R', 'D']]
+        counter += 1
+
+    results.loc['all'] = [pearson(data[0][[f'{j}_{data[1]}', f'V_{data[1]}']]) for j in ['P', 'R', 'D']]
+
+    return results
 
 
 def dickey_fuller(data):
-    decision = 1
+    decision = True
 
     result = sm.tsa.stattools.adfuller(data.dropna(), regression='c')
     stat, p_value = round(result[0], 4), result[1]
 
     if p_value >= 0.05:
-        decision = 0
+        decision = False
     else:
         if stat >= result[4]['5%']:
-            decision = 0
+            decision = False
 
     if p_value < 0.01:
         p_value = '{:.2e}'.format(p_value)
@@ -308,6 +323,31 @@ def dickey_fuller(data):
         p_value = round(p_value, 2)
 
     return [stat, p_value, decision]
+
+
+def auto_corr(data, dates):
+    results = pd.DataFrame(columns=[f'P_{data[1]}', f'R_{data[1]}', f'D_{data[1]}', f'V_{data[1]}'])
+
+    counter = 0
+    while counter < len(dates):
+        if counter == 0:
+            try:
+                tmp = data[0].iloc[0:data[0].index.get_loc(dates[counter]) + 1]
+            except KeyError:
+                tmp = data[0].iloc[0:data[0].index.get_loc(dates[counter + 1]) + 1]
+                counter += 1
+        elif counter == len(dates) - 1:
+            tmp = data[0].iloc[data[0].index.get_loc(dates[counter]):]
+        else:
+            tmp = data[0].iloc[
+                  data[0].index.get_loc(dates[counter - 1]):data[0].index.get_loc(dates[counter])]
+
+        results.loc[f'period_{counter + 1}'] = [dickey_fuller(tmp[f'{j}_{data[1]}'].dropna())[2] for j in
+                                                ['P', 'R', 'D', 'V']]
+
+        counter += 1
+
+    return results
 
 
 def get_plot(data, symbol='BTC'):
