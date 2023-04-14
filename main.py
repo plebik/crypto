@@ -1,30 +1,24 @@
-from utils import *
+# import os
+# from utils.event_analysis import event_analysis
+from utils.volume_analysis import volume_analysis
+from utils.dayoftheweek_analysis import dayoftheweek_analysis, ols
+import pandas as pd
 
+from utils.model import Crypto, Index
 
-def analysis(symbols=None):
-    os.makedirs("csv", exist_ok=True)
-    if symbols is None:
-        symbols = ['BTC', 'BNB', 'XMR', 'BAT']
-    cryptos = [Crypto(i) for i in symbols]
-    for i in cryptos:
-        frame = i.basic_statistics_for_each_day(i.data[['r']])
-        frame.to_csv('csv/statistics.csv', mode='a', header=False)
-
-        frame = i.average_daily_returns_indices_by_annual_sub_periods(i.data[['r']])
-        frame.to_csv('csv/returns.csv', mode='a', header=False)
-
-    tmp = pd.concat([i.data[['Close', 'Volume']] for i in cryptos], axis=1)
-    tmp.columns = ['BTC', 'BTC_vol', 'BNB', 'BNB_vol', 'XMR', 'XMR_vol', 'BAT', 'BAT_vol']
-    tmp.to_csv('csv/data.csv')
-
+pd.set_option('display.max_columns', 15)
 
 if __name__ == '__main__':
-    # analysis()
-    btc = Crypto('BTC')
-    bnb = Crypto('BNB')
-    xmr = Crypto('XMR')
-    bat = Crypto('BAT')
+    cryptos = [Crypto(i) for i in ['BTC', 'BNB', 'XMR', 'BAT']]
+    # indexes = [Index(i) for i in os.listdir("data")]
 
-    cryptos = [btc, bnb, xmr, bat]
+    #
+    # volume_anal = volume_analysis(cryptos, plot=False)
+    # volume_anal
 
-    print(Crypto.volume_analysis(cryptos, plot=False))
+    # event_anal = event_analysis(cryptos, indexes, '2022-02-24', 2, 5)
+    # event_anal
+
+    dayoftheweek_anal = dayoftheweek_analysis(cryptos, verbose=False)
+    dayoftheweek_anal
+
