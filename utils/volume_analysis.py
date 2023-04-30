@@ -140,9 +140,7 @@ def order(data, X, Y):
     return 4
 
 
-def granger(data, X, Y, lag=None, verbose=False):
-    if lag is None:
-        lag = order(data, X, Y)
+def granger(data, X, Y, lag=4, verbose=False):
 
     results = grangercausalitytests(data[[Y, X]].dropna(), maxlag=lag, verbose=False)
     stat, p_value = results[lag][0]['ssr_chi2test'][:-1]
@@ -220,6 +218,7 @@ def volume_analysis(cryptos, plot=False, verbose=True):
     johansens = []
     overall_grangers = []
     period_grangers = []
+    transoformed = []
     dates = ['2018-12-15', '2019-06-26', '2020-03-12', '2021-04-13', '2021-07-20', '2021-11-08']
 
     for crypto in cryptos:
@@ -227,6 +226,7 @@ def volume_analysis(cryptos, plot=False, verbose=True):
 
         # data preparation
         data = preprocessing(crypto)
+        transoformed.append(data[0][f'R_{data[1]}'])
 
         # basic statistics
         statistic = basic_stats(data)
@@ -265,6 +265,19 @@ def volume_analysis(cryptos, plot=False, verbose=True):
             plt.savefig("plots/volume_analysis.png")
             plt.show()
 
+    transformed_df = pd.concat(transoformed, axis=1)
+    # returns_granger = pd.DataFrame(columns=['Direction', 'Stat', 'p_value', 'Causality'])
+    returns_granger_list = []
+    for i in transformed_df.columns:
+        right = transformed_df.drop(columns=[i])
+        for j in right.columns:
+            returns_granger_list.append(granger(transformed_df, i, j))
+
+    returns_granger = pd.DataFrame(returns_granger_list)
+    returns_granger.columns = ['Direction', 'Stat', 'p_value', 'Causality']
+    print(returns_granger)
+
+
     # grouping and setting the order
     grouped_statistics = pd.concat(statistics)
     grouped_statistics = grouped_statistics.reindex([f'{i}_{j}' for i in ['P', 'R', 'V'] for j in names])
@@ -291,6 +304,7 @@ def volume_analysis(cryptos, plot=False, verbose=True):
     grouped_overall_grangers.drop(columns=['Direction'], inplace=True)
 
     grouped_period_grangers = pd.concat(period_grangers)
+
 
     if verbose:
         print()
