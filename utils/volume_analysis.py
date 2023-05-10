@@ -140,7 +140,7 @@ def order(data, X, Y):
     return 4
 
 
-def granger(data, X, Y, lag=4, verbose=False):
+def granger(data, X, Y, lag=7, verbose=False):
 
     results = grangercausalitytests(data[[Y, X]].dropna(), maxlag=lag, verbose=False)
     stat, p_value = results[lag][0]['ssr_chi2test'][:-1]

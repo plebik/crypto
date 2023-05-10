@@ -13,7 +13,7 @@ if __name__ == '__main__':
     indexes = [Index(i) for i in os.listdir("data")]
 
     #
-    volume_anal = volume_analysis(cryptos, plot=False, verbose=False)
+    volume_anal = volume_analysis(cryptos, plot=False, verbose=True)
     volume_anal
 
     # event_anal = event_analysis(cryptos, indexes, '2022-02-24', 2, 5)
